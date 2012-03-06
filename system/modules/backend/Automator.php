@@ -269,6 +269,63 @@ class Automator extends \Backend
 		// Add log entry
 		$this->log('Checked for Contao updates', 'Automator checkForUpdates()', TL_CRON);
 	}
+
+
+	/**
+	 * Scan the upload folder and create the database entries
+	 * @param string
+	 * @param integer
+	 */
+	public function scanUploadFolder($strPath=null, $pid=0)
+	{
+		if ($strPath === null)
+		{
+			$this->Database->query("TRUNCATE tl_files");
+			$strPath = $GLOBALS['TL_CONFIG']['uploadPath'];
+		}
+
+		$arrFolders = array();
+		$arrFiles = array();
+		$arrScan = scan(TL_ROOT . '/' . $strPath);
+
+		foreach ($arrScan as $strFile)
+		{
+			if (strncmp($strFile, '.', 1) === 0)
+			{
+				continue;
+			}
+
+			if (is_dir(TL_ROOT . '/' . $strPath . '/' . $strFile))
+			{
+				$arrFolders[] = $strPath . '/' . $strFile;
+			}
+			else
+			{
+				$arrFiles[] = $strPath . '/' . $strFile;
+			}
+		}
+
+		// Folders
+		foreach ($arrFolders as $strFolder)
+		{
+			$intSorting += 128;
+
+			$id = $this->Database->prepare("INSERT INTO tl_files (pid, tstamp, sorting, name, type, path, hash) VALUES (?, ?, ?, ?, 'folder', ?, '')")
+								 ->execute($pid, time(), $intSorting, basename($strFolder), $strFolder)
+								 ->insertId;
+
+			$this->scanUploadFolder($strFolder, $id);
+		}
+
+		// Files
+		foreach ($arrFiles as $strFile)
+		{
+			$intSorting += 128;
+
+			$this->Database->prepare("INSERT INTO tl_files (pid, tstamp, sorting, name, type, path, hash) VALUES (?, ?, ?, ?, 'file', ?, ?)")
+						   ->execute($pid, time(), $intSorting, basename($strFile), $strFile, md5_file(TL_ROOT . '/' . $strFile));
+		}
+	}
 }
 
 ?>

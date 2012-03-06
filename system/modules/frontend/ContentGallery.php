@@ -88,9 +88,19 @@ class ContentGallery extends \ContentElement
 		$images = array();
 		$auxDate = array();
 
-		// Get all images
-		foreach ($this->multiSRC as $file)
+		$objFiles = \FilesCollection::findMultipleByIds($this->multiSRC);
+
+		if ($objFiles === null)
 		{
+			$this->Template->images = '';
+			return;
+		}
+
+		// Get all images
+		while ($objFiles->next())
+		{
+			$file = $objFiles->path;
+
 			if (isset($images[$file]) || !file_exists(TL_ROOT . '/' . $file))
 			{
 				continue;
